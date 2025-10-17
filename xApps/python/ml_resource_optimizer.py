@@ -6,7 +6,7 @@ import argparse
 import signal
 import numpy as np
 from collections import deque
-from sklearn.ensemble import RandomForestRegressor
+from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier
 from sklearn.preprocessing import StandardScaler
 import joblib
 from lib.xAppBase import xAppBase
@@ -24,7 +24,7 @@ class MLResourceOptimizerXapp(xAppBase):
         # ML models
         self.scaler = StandardScaler()
         self.prb_predictor = RandomForestRegressor(n_estimators=50, random_state=42)
-        self.handover_predictor = RandomForestRegressor(n_estimators=50, random_state=42)
+        self.handover_predictor = RandomForestClassifier(n_estimators=50, random_state=42)
         
         # Model state
         self.model_trained = False
@@ -92,7 +92,9 @@ class MLResourceOptimizerXapp(xAppBase):
         
         # Train models
         self.prb_predictor.fit(X_scaled, y_prb)
-        self.handover_predictor.fit(X_scaled, y_ho)
+        # For classifier, we need at least 2 classes
+        if len(np.unique(y_ho)) > 1:
+            self.handover_predictor.fit(X_scaled, y_ho)
         
         self.model_trained = True
         print(f"ML models trained with {len(self.training_data_X)} samples")
@@ -158,9 +160,12 @@ class MLResourceOptimizerXapp(xAppBase):
             features = np.array([[current_dl, current_ul, avg_dl, avg_ul, dl_trend, len(history)]])
             features_scaled = self.scaler.transform(features)
             
-            ho_probability = self.handover_predictor.predict_proba(features_scaled)[0][1] if len(self.handover_predictor.classes_) > 1 else 0
-            
-            return ho_probability > 0.7  # 70% threshold
+            # Check if we have a trained classifier with classes
+            if hasattr(self.handover_predictor, 'classes_') and len(self.handover_predictor.classes_) > 1:
+                ho_probability = self.handover_predictor.predict_proba(features_scaled)[0][1]
+                return ho_probability > 0.7  # 70% threshold
+            else:
+                return False
         else:
             return False
 
@@ -191,8 +196,10 @@ class MLResourceOptimizerXapp(xAppBase):
                 # Extract and display metrics
                 metrics_summary = {}
                 for metric_name, values in ue_meas_data["measData"].items():
-                    value = sum(values) if values else 0
-                    metrics_summary[metric_name] = values
+                    # Extract actual values from the tuple format (type, value)
+                    actual_values = [val[1] if isinstance(val, tuple) else val for val in values]
+                    value = sum(actual_values) if actual_values else 0
+                    metrics_summary[metric_name] = actual_values
                     print(f"  ---Metric: {metric_name}, Value: {value}")
 
                 # Update history

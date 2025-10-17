@@ -96,8 +96,10 @@ class AnomalyDetectorXapp(xAppBase):
                 # Process each metric
                 for metric_name, values in ue_meas_data["measData"].items():
                     if values:  # Ensure we have values
+                        # Extract actual values from the tuple format (type, value)
+                        actual_values = [val[1] if isinstance(val, tuple) else val for val in values]
                         # Aggregate values if multiple samples
-                        current_value = sum(values) if isinstance(values, list) else values
+                        current_value = sum(actual_values) if isinstance(actual_values, list) else actual_values
                         
                         # Update history
                         self.update_metrics_history(f"{ue_id}_{metric_name}", current_value)
@@ -121,7 +123,9 @@ class AnomalyDetectorXapp(xAppBase):
             print("  --Cell-level metrics:")
             for metric_name, values in meas_data["measData"].items():
                 if values:
-                    current_value = sum(values) if isinstance(values, list) else values
+                    # Extract actual values from the tuple format (type, value)
+                    actual_values = [val[1] if isinstance(val, tuple) else val for val in values]
+                    current_value = sum(actual_values) if isinstance(actual_values, list) else actual_values
                     
                     # Update history
                     self.update_metrics_history(f"cell_{metric_name}", current_value)

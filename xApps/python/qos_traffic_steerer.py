@@ -53,9 +53,13 @@ class QoSTrafficSteererXapp(xAppBase):
         
         for metrics in history[-10:]:  # Last 10 samples
             if 'DRB.UEThpDl' in metrics:
-                dl_throughputs.extend(metrics['DRB.UEThpDl'])
+                # Extract actual values from the tuple format (type, value)
+                actual_dl_values = [val[1] if isinstance(val, tuple) else val for val in metrics['DRB.UEThpDl']]
+                dl_throughputs.extend(actual_dl_values)
             if 'DRB.UEThpUl' in metrics:
-                ul_throughputs.extend(metrics['DRB.UEThpUl'])
+                # Extract actual values from the tuple format (type, value)
+                actual_ul_values = [val[1] if isinstance(val, tuple) else val for val in metrics['DRB.UEThpUl']]
+                ul_throughputs.extend(actual_ul_values)
         
         if not dl_throughputs or not ul_throughputs:
             return 'unknown'
@@ -88,13 +92,17 @@ class QoSTrafficSteererXapp(xAppBase):
         
         # Check throughput violations
         if 'DRB.UEThpDl' in metrics_data and metrics_data['DRB.UEThpDl']:
-            current_dl = sum(metrics_data['DRB.UEThpDl'])
+            # Extract actual values from the tuple format (type, value)
+            actual_dl_values = [val[1] if isinstance(val, tuple) else val for val in metrics_data['DRB.UEThpDl']]
+            current_dl = sum(actual_dl_values)
             if current_dl < qos_profile['bandwidth_mbps'] * 0.5:  # Below 50% of required
                 self.ue_qos_violations[ue_id] += 1
                 return True
                 
         if 'DRB.UEThpUl' in metrics_data and metrics_data['DRB.UEThpUl']:
-            current_ul = sum(metrics_data['DRB.UEThpUl'])
+            # Extract actual values from the tuple format (type, value)
+            actual_ul_values = [val[1] if isinstance(val, tuple) else val for val in metrics_data['DRB.UEThpUl']]
+            current_ul = sum(actual_ul_values)
             if current_ul < qos_profile['bandwidth_mbps'] * 0.3:  # Below 30% of required
                 self.ue_qos_violations[ue_id] += 1
                 return True
@@ -108,16 +116,22 @@ class QoSTrafficSteererXapp(xAppBase):
         
         # Check various metrics that indicate load
         if 'DRB.UEThpDl' in metrics_data:
-            dl_load = sum(metrics_data['DRB.UEThpDl']) / 1000.0  # Normalize
+            # Extract actual values from the tuple format (type, value)
+            actual_dl_values = [val[1] if isinstance(val, tuple) else val for val in metrics_data['DRB.UEThpDl']]
+            dl_load = sum(actual_dl_values) / 1000.0  # Normalize
             load_indicators.append(min(dl_load, 1.0))
             
         if 'DRB.UEThpUl' in metrics_data:
-            ul_load = sum(metrics_data['DRB.UEThpUl']) / 1000.0  # Normalize
+            # Extract actual values from the tuple format (type, value)
+            actual_ul_values = [val[1] if isinstance(val, tuple) else val for val in metrics_data['DRB.UEThpUl']]
+            ul_load = sum(actual_ul_values) / 1000.0  # Normalize
             load_indicators.append(min(ul_load, 1.0))
             
         if 'RRC.ConnEstabSucc' in metrics_data:
             # Connection success rate can indicate congestion
-            conn_rate = metrics_data['RRC.ConnEstabSucc'][0] if metrics_data['RRC.ConnEstabSucc'] else 0
+            # Extract actual values from the tuple format (type, value)
+            actual_rrc_values = [val[1] if isinstance(val, tuple) else val for val in metrics_data['RRC.ConnEstabSucc']]
+            conn_rate = actual_rrc_values[0] if actual_rrc_values else 0
             # Lower success rate indicates higher load
             load_indicators.append(1.0 - (conn_rate / 100.0) if conn_rate > 0 else 0)
             
@@ -171,8 +185,10 @@ class QoSTrafficSteererXapp(xAppBase):
                 # Extract metrics for processing
                 metrics_summary = {}
                 for metric_name, values in ue_meas_data["measData"].items():
-                    metrics_summary[metric_name] = values
-                    print(f"  ---Metric: {metric_name}, Value: {sum(values) if values else 0}")
+                    # Extract actual values from the tuple format (type, value)
+                    actual_values = [val[1] if isinstance(val, tuple) else val for val in values]
+                    metrics_summary[metric_name] = actual_values
+                    print(f"  ---Metric: {metric_name}, Value: {sum(actual_values) if actual_values else 0}")
 
                 # Classify traffic type
                 traffic_type = self.classify_traffic(ue_id, metrics_summary)
