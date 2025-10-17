@@ -16,7 +16,12 @@ This document provides detailed information about the machine learning enhanced 
 7. [Configuration Options](#configuration-options)
 8. [Monitoring and Troubleshooting](#monitoring-and-troubleshooting)
 9. [Performance Considerations](#performance-considerations)
-10. [Extending the ML xApps](#extending-the-ml-xapps)
+10. [ML Model Training](#ml-model-training)
+    - [Training Data Requirements](#training-data-requirements)
+    - [Data Collection Process](#data-collection-process)
+    - [Training Procedures](#training-procedures)
+    - [Model Evaluation](#model-evaluation)
+11. [Extending the ML xApps](#extending-the-ml-xapps)
 
 ## Overview
 
@@ -309,6 +314,154 @@ For production deployments:
 - **Data Collection:** 1-5 second intervals
 - **Model Inference:** <100ms
 - **Control Actions:** <1 second
+
+## ML Model Training
+
+### Training Data Requirements
+
+Each ML xApp requires specific types of data for effective training:
+
+#### ML Resource Optimizer
+- **Input Features:**
+  - Current DL throughput per UE
+  - Current UL throughput per UE
+  - Historical average DL throughput (10-sample window)
+  - Historical average UL throughput (10-sample window)
+  - Throughput trend (difference between recent and older samples)
+  - History length (number of collected samples)
+  
+- **Target Variables:**
+  - Optimal PRB setting (classification: high=100 or low=10)
+  - Handover necessity (binary: 0=No, 1=Yes)
+
+#### Anomaly Detector
+- **Input Data:**
+  - Time-series metrics for each UE and cell
+  - Statistical profiles (mean, standard deviation)
+  - Historical metric values for Z-score calculation
+
+#### QoS Traffic Steerer
+- **Input Features:**
+  - DL throughput patterns
+  - UL throughput patterns
+  - Throughput variance
+  - Connection success rates
+  - Cell load indicators
+
+- **Target Variables:**
+  - Traffic type classification (voice, video, gaming, web, file_transfer)
+  - QoS violation occurrence (binary: 0=No, 1=Yes)
+  - Steering necessity (binary: 0=No, 1=Yes)
+
+### Data Collection Process
+
+The ML xApps automatically collect training data during operation:
+
+1. **Automatic Data Collection:**
+   - Metrics are collected at regular intervals (configurable)
+   - Historical data is maintained in sliding windows
+   - Feature extraction happens in real-time
+
+2. **Data Storage:**
+   - Data is stored in memory buffers (not persisted to disk)
+   - Buffers have configurable maximum lengths
+   - Old data is automatically removed to manage memory
+
+3. **Feature Engineering:**
+   - Statistical features (mean, variance, trends)
+   - Temporal features (time-based patterns)
+   - Domain-specific features (network KPIs)
+
+### Training Procedures
+
+#### ML Resource Optimizer Training
+The ML Resource Optimizer uses online learning with the following process:
+
+1. **Data Accumulation:**
+   - Collects features and outcomes for 20+ samples
+   - Stores training data in memory buffers
+   - Maintains separate datasets for PRB prediction and handover prediction
+
+2. **Model Training:**
+   - Trains Random Forest models when sufficient data is available
+   - Uses StandardScaler for feature normalization
+   - Retrains models periodically as new data arrives
+
+3. **Training Triggers:**
+   - Initial training after 20 samples
+   - Retraining every 50 new samples
+   - Manual retraining capability
+
+#### Anomaly Detector Training
+The Anomaly Detector uses statistical methods that don't require explicit training:
+
+1. **Statistical Profile Building:**
+   - Builds mean and standard deviation profiles for each metric
+   - Updates profiles incrementally as new data arrives
+   - Maintains sufficient history for reliable statistics (30+ samples)
+
+2. **Anomaly Detection:**
+   - Calculates Z-scores in real-time
+   - Uses configurable thresholds (default: 3.0 standard deviations)
+   - Implements cooldown mechanisms to prevent alert flooding
+
+#### QoS Traffic Steerer Training
+The QoS Traffic Steerer uses rule-based classification that adapts over time:
+
+1. **Traffic Classification:**
+   - Uses throughput patterns to classify traffic types
+   - Maintains history for more accurate classification
+   - Updates classifications as new data arrives
+
+2. **QoS Monitoring:**
+   - Compares actual metrics against QoS profiles
+   - Counts violations to trigger steering decisions
+   - Adjusts thresholds based on network conditions
+
+### Model Evaluation
+
+#### Performance Metrics
+
+1. **ML Resource Optimizer:**
+   - PRB Prediction Accuracy: Percentage of correct PRB setting predictions
+   - Handover Prediction Accuracy: Percentage of correct handover decisions
+   - Resource Efficiency: Comparison of predicted vs actual resource usage
+
+2. **Anomaly Detector:**
+   - Detection Rate: Percentage of actual anomalies correctly identified
+   - False Positive Rate: Percentage of normal behavior flagged as anomalous
+   - Response Time: Time from anomaly occurrence to detection
+
+3. **QoS Traffic Steerer:**
+   - Classification Accuracy: Percentage of correctly classified traffic types
+   - QoS Compliance: Percentage of time QoS requirements are met
+   - Steering Effectiveness: Improvement in QoS metrics after steering
+
+#### Evaluation Methods
+
+1. **Online Evaluation:**
+   - Continuous monitoring of prediction accuracy
+   - Real-time performance metrics calculation
+   - Automatic model retraining when performance degrades
+
+2. **Offline Evaluation:**
+   - Historical data analysis for detailed performance assessment
+   - Cross-validation for model robustness testing
+   - A/B testing for comparing different model versions
+
+#### Model Persistence
+
+Currently, models are not persisted between xApp restarts. For production deployments, consider:
+
+1. **Model Checkpointing:**
+   - Periodic saving of trained models to disk
+   - Loading models at startup for faster initialization
+   - Version control for model updates
+
+2. **Transfer Learning:**
+   - Using pre-trained models as starting points
+   - Fine-tuning models for specific network conditions
+   - Sharing models across similar network deployments
 
 ## Extending the ML xApps
 
