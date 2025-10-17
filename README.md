@@ -2,6 +2,8 @@
 
 This repository provides a minimal version of the **O-RAN Software Community (SC) Near-Real-time RIC** (`i-release`). It includes configuration files that enable the building and deploying of the SC RIC as a multi-container application using a single Docker command, without Kubernetes or Helm. Additionally, the repository features example monitoring and control xApps, which use the  ``E2SM_KPM`` and  ``E2SM_RC`` service modules, respectively.
 
+**IMPORTANT**: This repository includes machine learning enhanced xApps. Please read the [Risk Disclaimer](RISK_DISCLAIMER.md) before using any components from this repository.
+
 ## Repository Structure
 
 This repository is organized as follows:
@@ -128,7 +130,7 @@ docker compose exec python_xapp_runner ./simple_mon_xapp.py --metrics=DRB.UEThpD
 
 The xApp should subscribe to `DRB.UEThpUl` and `DRB.UEThpUl` measurements, and display the content of received `RIC_INDICATION` messages. The console output should be similar to:
 
-```console
+```
 RIC Indication Received from gnb_001_001_0000019b for Subscription ID: 65
 E2SM_KPM RIC Indication Content:
 -ColletStartTime:  2024-01-26 00:08:05
@@ -159,7 +161,7 @@ docker compose exec python_xapp_runner ./simple_rc_xapp.py
 
 The example RC xApp periodically (every 5s) adjusts the number of DL PRBs available for allocation to a UE. Its console output should be similar to:
 
-```console
+```
 11:34:29 Send RIC Control Request to E2 node ID: gnb_001_001_00019b for UE ID: 0, PRB_min: 1, PRB_max: 5
 11:34:34 Send RIC Control Request to E2 node ID: gnb_001_001_00019b for UE ID: 0, PRB_min: 1, PRB_max: 275
 11:34:39 Send RIC Control Request to E2 node ID: gnb_001_001_00019b for UE ID: 0, PRB_min: 1, PRB_max: 5
@@ -239,7 +241,38 @@ When running in the background, please execute:
 ```bash
 docker compose down
 ```
-For more options, check `docker compose down --help`
+
+## ML-Enhanced xApps
+
+We also provide machine learning enhanced xApps that demonstrate advanced network optimization capabilities:
+
+### [ml_resource_optimizer.py](xApps/python/ml_resource_optimizer.py)
+Uses machine learning models to predict optimal resource allocation for UEs based on historical traffic patterns and current network conditions. This xApp:
+- Collects historical metrics for each UE
+- Trains Random Forest models to predict optimal PRB settings
+- Dynamically adjusts resource allocation based on predicted needs
+- Continuously improves predictions as more data is collected
+
+### [anomaly_detector.py](xApps/python/anomaly_detector.py)
+Uses statistical methods to detect anomalous network behavior and trigger appropriate corrective actions. This xApp:
+- Maintains historical metrics for statistical analysis
+- Uses Z-score based anomaly detection
+- Implements cooldown periods to avoid excessive alerts
+- Can trigger corrective actions based on anomaly type
+
+### [qos_traffic_steerer.py](xApps/python/qos_traffic_steerer.py)
+Classifies traffic types based on QoS requirements and steers traffic to appropriate cells to maintain service quality. This xApp:
+- Classifies traffic into different types (voice, video, gaming, etc.)
+- Monitors QoS violations for each traffic type
+- Evaluates cell load conditions
+- Recommends traffic steering to maintain QoS requirements
+
+For detailed information about these ML-enhanced xApps, including deployment instructions and technical implementation details, please see [ML_xApps_README.md](ML_xApps_README.md).
+
+To run any of these ML-enhanced xApps, use the following command pattern:
+```bash
+docker compose exec python_xapp_runner ./<xapp_filename.py> --metrics=<comma_separated_metrics>
+```
 
 #### Monitor RIC communication:
 
